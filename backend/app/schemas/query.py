@@ -7,3 +7,4 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     sql: str
+    valid: bool
