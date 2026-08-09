@@ -2,9 +2,13 @@ from fastapi import APIRouter, HTTPException
 
 from app.schemas.query import QueryRequest, QueryResponse
 from app.database.schema_cache import DATABASE_SCHEMA
+from app.database.connection import create_connection
+from app.database.query_executor import execute_query
+
 from app.services.prompt_builder import build_prompt
 from app.services.llm_service import generate_sql
-from app.utils.sql_validator import validate_question, validate_sql
+
+from app.utils.sql_validator import validate_sql
 
 
 router = APIRouter(
@@ -16,13 +20,6 @@ router = APIRouter(
 @router.post("/generate", response_model=QueryResponse)
 def generate_query(request: QueryRequest):
 
-    # Validate user's request before calling the LLM
-    if not validate_question(request.question):
-        raise HTTPException(
-            status_code=400,
-            detail="Only read-only SELECT questions are allowed."
-        )
-
     prompt = build_prompt(
         DATABASE_SCHEMA,
         request.question
@@ -30,11 +27,33 @@ def generate_query(request: QueryRequest):
 
     sql = generate_sql(prompt)
 
-    # Validate generated SQL
     if not validate_sql(sql):
         raise HTTPException(
             status_code=400,
-            detail="Generated SQL is not a valid SELECT query."
+            detail="Only SELECT queries are allowed."
         )
 
-    return QueryResponse(sql=sql)
+    connection = create_connection(
+        host=request.host,
+        port=request.port,
+        database=request.database,
+        username=request.username,
+        password=request.password,
+    )
+
+    try:
+
+        result = execute_query(
+            connection,
+            sql
+        )
+
+    finally:
+
+        connection.close()
+
+    return QueryResponse(
+        sql=sql,
+        columns=result["columns"],
+        rows=result["rows"]
+    )
