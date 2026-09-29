@@ -623,6 +623,66 @@ function displayResults(data) {
 
 }
 
+function renderRecommendedChart(data) {
+
+    console.log("1. Recommended chart function called");
+    console.log("2. Received data:", data);
+    console.log("3. Chart recommendation:", data.chart);
+    console.log("4. Plotly:", typeof Plotly);
+    console.log(
+        "5. Chart container:",
+        document.getElementById("chartContainer")
+    );
+
+    const chart = data.chart;
+
+    // Keep the rest of your existing code below
+
+    if (!chart || !data.columns || !data.rows) {
+        return;
+    }
+
+    // Populate dropdowns using the analysis result columns
+    xColumn.innerHTML = "";
+    yColumn.innerHTML = "";
+
+    data.columns.forEach(column => {
+        xColumn.add(new Option(column, column));
+        yColumn.add(new Option(column, column));
+    });
+
+    chartType.value = chart.type;
+    xColumn.value = chart.x;
+    yColumn.value = chart.y;
+
+    chartSection.classList.remove("hidden");
+
+    const xIndex = data.columns.indexOf(chart.x);
+    const yIndex = data.columns.indexOf(chart.y);
+
+    if (xIndex === -1 || yIndex === -1) {
+        console.error("Chart columns missing", chart);
+        return;
+    }
+
+    Plotly.newPlot(
+        chartContainer,
+        [{
+            type: chart.type,
+            x: data.rows.map(row => row[xIndex]),
+            y: data.rows.map(row => Number(row[yIndex])),
+            marker: { opacity: 0.85 }
+        }],
+        {
+            title: chart.title,
+            xaxis: { title: chart.x },
+            yaxis: { title: chart.y },
+            autosize: true
+        },
+        { responsive: true }
+    );
+}
+
 // ------------------------------------
 // Display CSV / Excel Results
 // ------------------------------------
@@ -746,7 +806,15 @@ function displayFileResults(data) {
 
             }
         );
+        console.log("1. File result received:", data);
+        console.log("2. Chart recommendation:", data.chart);
+
         updateDashboard(data);
+
+        console.log("3. Calling chart renderer");
+        renderRecommendedChart(data);
+
+        console.log("4. Renderer returned");
     
     }
 
